@@ -1,0 +1,67 @@
+version: "2"
+
+volumes:
+  sentry-docker_postgres:
+    external: true
+
+services:
+  redis:
+    restart: ${SERVICE_RESTART}
+    image: redis
+    container_name: sentry-redis
+  
+  postgres:
+    restart: ${SERVICE_RESTART}
+    image: postgres
+    container_name: sentry-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - sentry-docker_postgres:/var/lib/postgresql/data
+
+  sentry:
+    restart: ${SERVICE_RESTART}
+    image: sentry
+    container_name: sentry
+    links:
+      - redis
+      - postgres
+    ports:
+      - ${LISTEN_PORT}:9000
+    environment:
+      SENTRY_SECRET_KEY: ${SECRET_KEY}
+      SENTRY_REDIS_HOST: redis
+      SENTRY_POSTGRES_HOST: postgres
+      SENTRY_DB_USER: ${DB_USER}
+      SENTRY_DB_PASSWORD: ${DB_PASSWORD}
+  
+  cron:
+    restart: ${SERVICE_RESTART}
+    image: sentry
+    container_name: sentry-cron
+    command: "sentry run cron"
+    links:
+     - redis
+     - postgres
+    environment:
+      SENTRY_SECRET_KEY: ${SECRET_KEY}
+      SENTRY_REDIS_HOST: redis
+      SENTRY_POSTGRES_HOST: postgres
+      SENTRY_DB_USER: ${DB_USER}
+      SENTRY_DB_PASSWORD: ${DB_PASSWORD}
+  
+  worker:
+    restart: ${SERVICE_RESTART}
+    image: sentry
+    container_name: sentry-worker-1
+    command: "sentry run worker"
+    links:
+     - redis
+     - postgres
+    environment:
+      SENTRY_SECRET_KEY: ${SECRET_KEY}
+      SENTRY_REDIS_HOST: redis
+      SENTRY_POSTGRES_HOST: postgres
+      SENTRY_DB_USER: ${DB_USER}
+      SENTRY_DB_PASSWORD: ${DB_PASSWORD}
